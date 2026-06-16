@@ -1,0 +1,19 @@
+node_modules
+dist
+dist-electron
+out
+build
+release
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# large videos we don't want to push (only allow public/videos)
+videos/tokyo_night.mp4
+videos/vid4.mp4

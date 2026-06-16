@@ -1,0 +1,38 @@
+{
+  "name": "vibeflow",
+  "version": "1.0.0",
+  "description": "Immersive visual companion for Spotify",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "npm run build && electron .",
+    "preview": "electron-vite preview",
+    "dev:web": "vite --config vite.config.ts",
+    "build:web": "vite build --config vite.config.ts",
+    "preview:web": "vite preview --config vite.config.ts"
+  },
+  "keywords": [
+    "spotify",
+    "visualizer",
+    "electron",
+    "overlay"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@electron-toolkit/utils": "^4.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^42.3.3",
+    "electron-builder": "^26.15.2",
+    "electron-vite": "^5.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.5"
+  }
+}
