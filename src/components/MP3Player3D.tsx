@@ -339,13 +339,13 @@ export const MP3Player3D: React.FC<{ spotify: SpotifyDeviceSource }> = ({ spotif
         style={{
           width: '100%',
           height: '100%',
-          background: 'radial-gradient(circle at 50% 40%, #171b30 0%, #06080e 100%)'
+          background: 'radial-gradient(circle at 50% 40%, #111317 0%, #050507 100%)'
         }}
       >
         <ambientLight intensity={1.2} />
         <directionalLight position={[5, 8, 5]} intensity={2.0} castShadow />
         <directionalLight position={[-5, -4, -3]} intensity={0.8} />
-        <pointLight position={[0, 2, 4]} intensity={1.5} color="#e0f2fe" />
+        <pointLight position={[0, 2, 4]} intensity={1.5} color="#ffffff" />
         <pointLight position={[0, -2, 3]} intensity={1.0} color="#f8fafc" />
 
         <React.Suspense fallback={null}>

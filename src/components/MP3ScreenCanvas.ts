@@ -146,22 +146,19 @@ export class MP3ScreenCanvas {
     ctx.roundRect(0, 0, w, h, 34) // rounded screen corners
     ctx.clip()
 
-    // 1. LCD Backlight Gradient
-    const bg = ctx.createLinearGradient(0, 0, 0, h)
-    bg.addColorStop(0, '#0a101f')
-    bg.addColorStop(1, '#141d33')
-    ctx.fillStyle = bg
+    // 1. Fully Pitch Black Screen Background
+    ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, w, h)
 
-    // Subtle LCD scanline raster effect
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.012)'
-    for (let y = 0; y < h; y += 4) {
-      ctx.fillRect(0, y, w, 2)
-    }
-
-    // 2. Top Header Bar
-    ctx.fillStyle = '#17233d'
+    // 2. Top Header Bar (Realistic subtle dark charcoal with fine divider)
+    ctx.fillStyle = '#080808'
     ctx.fillRect(0, 0, w, 64)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(0, 64)
+    ctx.lineTo(w, 64)
+    ctx.stroke()
     ctx.textBaseline = 'middle'
 
     // Status indicator dot / play state
@@ -179,7 +176,7 @@ export class MP3ScreenCanvas {
 
     ctx.font = '700 26px "Segoe UI", Roboto, sans-serif'
     ctx.textAlign = 'left'
-    ctx.fillStyle = '#f1f5f9'
+    ctx.fillStyle = '#f4f4f5'
 
     if (d.mode === 'lyrics') {
       ctx.fillText('Synced Lyrics', pad + 36, 33)
@@ -197,10 +194,10 @@ export class MP3ScreenCanvas {
     // Unconnected / No track state
     if (!d.hasTrack) {
       ctx.textAlign = 'center'
-      ctx.fillStyle = '#e2e8f0'
+      ctx.fillStyle = '#ffffff'
       ctx.font = '700 40px "Segoe UI", Roboto, sans-serif'
       ctx.fillText(d.connected ? 'Nothing playing' : 'Spotify not connected', w / 2, h / 2 - 20)
-      ctx.fillStyle = '#94a3b8'
+      ctx.fillStyle = '#a1a1aa'
       ctx.font = '28px "Segoe UI", Roboto, sans-serif'
       ctx.fillText(
         d.connected ? 'Start playback in Spotify' : 'Log in from Spotify Companion',
@@ -223,15 +220,15 @@ export class MP3ScreenCanvas {
         ctx.fillStyle = '#38bdf8'
         ctx.font = '600 28px "Segoe UI", Roboto, sans-serif'
         ctx.fillText('Searching synced lyrics...', w / 2, areaTop + areaH / 2 - 10)
-        ctx.fillStyle = '#64748b'
+        ctx.fillStyle = '#71717a'
         ctx.font = '22px "Segoe UI", Roboto, sans-serif'
         ctx.fillText('Connecting to lrclib database', w / 2, areaTop + areaH / 2 + 28)
       } else if (!d.lyrics || (!d.lyrics.current && !d.lyrics.prev && !d.lyrics.next)) {
         ctx.textAlign = 'center'
-        ctx.fillStyle = '#e2e8f0'
+        ctx.fillStyle = '#ffffff'
         ctx.font = '700 32px "Segoe UI", Roboto, sans-serif'
         ctx.fillText('No synced lyrics found', w / 2, areaTop + areaH / 2 - 20)
-        ctx.fillStyle = '#94a3b8'
+        ctx.fillStyle = '#a1a1aa'
         ctx.font = '24px "Segoe UI", Roboto, sans-serif'
         ctx.fillText('Enjoy the track instrumental vibe', w / 2, areaTop + areaH / 2 + 20)
         ctx.fillStyle = '#38bdf8'
@@ -244,7 +241,7 @@ export class MP3ScreenCanvas {
         // Previous Line
         if (d.lyrics.prev) {
           ctx.textAlign = 'center'
-          ctx.fillStyle = 'rgba(148, 163, 184, 0.45)'
+          ctx.fillStyle = 'rgba(161, 161, 170, 0.45)'
           ctx.font = '500 24px "Segoe UI", Roboto, sans-serif'
           ctx.fillText(this.fit(d.lyrics.prev, contentW), w / 2, midY - 76)
         }
@@ -256,15 +253,15 @@ export class MP3ScreenCanvas {
 
         // Pill background
         const pillH = Math.max(56, currentLines.length * 42 + 18)
-        ctx.fillStyle = 'rgba(14, 165, 233, 0.12)'
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)'
+        ctx.fillStyle = '#0d0d0d'
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)'
         ctx.lineWidth = 1.5
         ctx.beginPath()
         ctx.roundRect(pad + 10, midY - pillH / 2, contentW - 20, pillH, 16)
         ctx.fill()
         ctx.stroke()
 
-        // Active text in vibrant cyan/white
+        // Active text in vibrant cyan
         ctx.fillStyle = '#38bdf8'
         const lineStart = midY - ((currentLines.length - 1) * 38) / 2
         currentLines.forEach((line, idx) => {
@@ -274,7 +271,7 @@ export class MP3ScreenCanvas {
         // Next Line
         if (d.lyrics.next) {
           ctx.textAlign = 'center'
-          ctx.fillStyle = 'rgba(148, 163, 184, 0.55)'
+          ctx.fillStyle = 'rgba(161, 161, 170, 0.65)'
           ctx.font = '500 24px "Segoe UI", Roboto, sans-serif'
           ctx.fillText(this.fit(d.lyrics.next, contentW), w / 2, midY + 84)
         }
@@ -285,10 +282,10 @@ export class MP3ScreenCanvas {
       const ay = 100
       const as = 250
 
-      // Art container with rounded corners and subtle border
-      ctx.fillStyle = '#1e293b'
-      ctx.strokeStyle = '#475569'
-      ctx.lineWidth = 2
+      // Art container on pitch black
+      ctx.fillStyle = '#0c0c0c'
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+      ctx.lineWidth = 1.5
       ctx.beginPath()
       ctx.roundRect(ax, ay, as, as, 18)
       ctx.fill()
@@ -302,7 +299,7 @@ export class MP3ScreenCanvas {
         ctx.drawImage(art, ax, ay, as, as)
         ctx.restore()
       } else {
-        ctx.fillStyle = '#94a3b8'
+        ctx.fillStyle = '#71717a'
         ctx.font = '700 90px sans-serif'
         ctx.textAlign = 'center'
         ctx.fillText('♪', ax + as / 2, ay + as / 2)
@@ -314,22 +311,22 @@ export class MP3ScreenCanvas {
       ctx.textAlign = 'left'
 
       // Title
-      ctx.fillStyle = '#f8fafc'
+      ctx.fillStyle = '#ffffff'
       ctx.font = '700 38px "Segoe UI", Roboto, sans-serif'
       ctx.fillText(this.fit(d.title, tw), tx, ay + 46)
 
       // Artist
-      ctx.fillStyle = '#93c5fd'
+      ctx.fillStyle = '#e4e4e7'
       ctx.font = '600 30px "Segoe UI", Roboto, sans-serif'
       ctx.fillText(this.fit(d.artist, tw), tx, ay + 104)
 
       // Album
-      ctx.fillStyle = '#94a3b8'
+      ctx.fillStyle = '#a1a1aa'
       ctx.font = '26px "Segoe UI", Roboto, sans-serif'
       ctx.fillText(this.fit(d.album, tw), tx, ay + 154)
 
       // Volume & Hint Pill
-      ctx.fillStyle = '#64748b'
+      ctx.fillStyle = '#71717a'
       ctx.font = '600 22px "Segoe UI", Roboto, sans-serif'
       ctx.fillText(`VOL ${Math.round(d.volume)}%  •  MENU for Lyrics`, tx, ay + 214)
     }
@@ -337,7 +334,7 @@ export class MP3ScreenCanvas {
     // ── PROGRESS BAR (Both Modes) ──────────────────────
     const py = 430
     const pw = w - pad * 2
-    ctx.fillStyle = '#1e293b'
+    ctx.fillStyle = '#18181b'
     ctx.beginPath()
     ctx.roundRect(pad, py, pw, 14, 7)
     ctx.fill()
@@ -355,7 +352,7 @@ export class MP3ScreenCanvas {
 
     // Timestamps
     ctx.font = '700 28px Consolas, "Courier New", monospace'
-    ctx.fillStyle = '#e2e8f0'
+    ctx.fillStyle = '#f4f4f5'
     ctx.textAlign = 'left'
     ctx.fillText(fmt(d.progressMs), pad, py + 48)
     ctx.textAlign = 'right'
@@ -363,7 +360,7 @@ export class MP3ScreenCanvas {
 
     // Footer info
     ctx.textAlign = 'center'
-    ctx.fillStyle = '#64748b'
+    ctx.fillStyle = '#71717a'
     ctx.font = '22px "Segoe UI", Roboto, sans-serif'
     ctx.fillText(
       d.mode === 'lyrics' ? 'Spotify • Click MENU to view Art' : 'Spotify • Click MENU for Lyrics',
