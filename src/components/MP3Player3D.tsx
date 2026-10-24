@@ -4,6 +4,7 @@ import { OrbitControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { SpotifyPlaybackState } from '../types/spotify'
 import { MP3ScreenCanvas, ScreenData } from './MP3ScreenCanvas'
+import { fetchLyrics, LyricLine } from '../services/lyrics'
 
 /** Subset of the existing useSpotify() return value used by the 3D device. */
 export interface SpotifyDeviceSource {
@@ -18,6 +19,8 @@ export interface SpotifyDeviceSource {
 
 interface MP3ModelProps {
   spotify: SpotifyDeviceSource
+  screenMode: 'now-playing' | 'lyrics'
+  onToggleScreenMode: () => void
 }
 
 /** Gap between glass and display plane (model units) - prevents z-fighting. */
@@ -25,8 +28,7 @@ const SCREEN_OFFSET = 0.004
 
 /**
  * The GLB is one baked mesh. Its front glass is the group of +Z-facing (mesh space) vertices
- * lying on the front-most plane. Measure that group so the display matches the real glass
- * instead of hardcoded numbers. All values are in the mesh's local space.
+ * lying on the front-most plane. Measure that group so the display matches the real glass.
  */
 function measureScreen(root: THREE.Object3D) {
   let found: THREE.Mesh | null = null
@@ -53,7 +55,7 @@ function measureScreen(root: THREE.Object3D) {
   return { mesh, width: size.x, height: size.y, center: new THREE.Vector3(center.x, center.y, maxZ) }
 }
 
-function MP3Device({ spotify }: MP3ModelProps) {
+function MP3Device({ spotify, screenMode, onToggleScreenMode }: MP3ModelProps) {
   const gltf = useGLTF('/models/mp3_player.glb')
   const gl = useThree((s) => s.gl)
   const screen = useMemo(() => measureScreen(gltf.scene), [gltf.scene])
@@ -70,6 +72,43 @@ function MP3Device({ spotify }: MP3ModelProps) {
     prev: 0
   })
 
+  // Synchronized Lyrics State
+  const [lyrics, setLyrics] = useState<LyricLine[] | null>(null)
+  const [lyricsLoading, setLyricsLoading] = useState(false)
+  const currentItem = spotify.currentTrack?.item
+
+  useEffect(() => {
+    let active = true
+    if (!currentItem) {
+      setLyrics(null)
+      return
+    }
+
+    setLyricsLoading(true)
+    fetchLyrics(
+      currentItem.artists?.[0]?.name || '',
+      currentItem.name || '',
+      currentItem.album?.name || '',
+      currentItem.duration_ms || 0
+    )
+      .then((res) => {
+        if (active) {
+          setLyrics(res)
+          setLyricsLoading(false)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setLyrics(null)
+          setLyricsLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [currentItem?.id])
+
   // Latest Spotify snapshot + arrival time, so progress can be interpolated between polls.
   const snapRef = useRef({ spotify, receivedAt: performance.now() })
   snapRef.current.spotify = spotify
@@ -77,7 +116,7 @@ function MP3Device({ spotify }: MP3ModelProps) {
     snapRef.current.receivedAt = performance.now()
   }, [spotify.currentTrack])
 
-  // Display plane: a child of the model's own mesh node => inherits every transform of the device.
+  // Display plane: child of the model's own mesh node => inherits every transform of the device.
   const screenPlane = useMemo(() => {
     if (!screen) return null
     const tex = screenCanvas.texture
@@ -87,7 +126,7 @@ function MP3Device({ spotify }: MP3ModelProps) {
       new THREE.MeshBasicMaterial({
         map: tex,
         transparent: true,
-        alphaTest: 0.5, // rounded corners
+        alphaTest: 0.5,
         toneMapped: false,
         polygonOffset: true,
         polygonOffsetFactor: -2,
@@ -95,7 +134,6 @@ function MP3Device({ spotify }: MP3ModelProps) {
       })
     )
     plane.name = 'ScreenDisplay'
-    // Mesh-local: plane faces +Z (same as the glass normal) and sits just above the glass.
     plane.position.set(screen.center.x, screen.center.y, screen.center.z + SCREEN_OFFSET)
     return plane
   }, [screen, screenCanvas, gl])
@@ -112,7 +150,7 @@ function MP3Device({ spotify }: MP3ModelProps) {
 
   useEffect(() => () => screenCanvas.dispose(), [screenCanvas])
 
-  // Redraw the screen only when the (interpolated) Spotify state changes
+  // Redraw the screen on each animation frame
   useFrame(() => {
     const { spotify: sp, receivedAt } = snapRef.current
     const t = sp.currentTrack
@@ -121,6 +159,25 @@ function MP3Device({ spotify }: MP3ModelProps) {
     let progress = t?.progress_ms ?? 0
     if (t?.is_playing) progress += performance.now() - receivedAt
     if (duration) progress = Math.min(progress, duration)
+
+    // Calculate current synced lyric line
+    let lyricPrev = ''
+    let lyricCur = ''
+    let lyricNext = ''
+    if (lyrics && lyrics.length > 0) {
+      const offsetProgress = progress + 200
+      const activeIdx = lyrics.findIndex(
+        (line, i) =>
+          line.timeMs <= offsetProgress &&
+          (i === lyrics.length - 1 || lyrics[i + 1].timeMs > offsetProgress)
+      )
+      if (activeIdx >= 0) {
+        lyricCur = lyrics[activeIdx].text
+        lyricPrev = activeIdx > 0 ? lyrics[activeIdx - 1].text : ''
+        lyricNext = activeIdx < lyrics.length - 1 ? lyrics[activeIdx + 1].text : ''
+      }
+    }
+
     const data: ScreenData = {
       connected: sp.isLoggedIn,
       hasTrack: !!item,
@@ -131,7 +188,14 @@ function MP3Device({ spotify }: MP3ModelProps) {
       progressMs: progress,
       durationMs: duration,
       isPlaying: !!t?.is_playing,
-      volume: sp.volume
+      volume: sp.volume,
+      mode: screenMode,
+      lyrics: {
+        prev: lyricPrev,
+        current: lyricCur,
+        next: lyricNext
+      },
+      lyricsLoading
     }
     screenCanvas.render(data)
 
@@ -141,123 +205,118 @@ function MP3Device({ spotify }: MP3ModelProps) {
     })
   })
 
-  // Click & Press handlers
+  // Tactile button press trigger
   const triggerButton = (name: string, action: () => void) => {
-    pressedDepthRef.current[name] = 0.04
+    pressedDepthRef.current[name] = 0.015
     setActiveBtn(name)
     setTimeout(() => setActiveBtn(null), 180)
     action()
   }
 
-  // Controls drive the existing Spotify actions
-  const audio = {
-    togglePlay: () => void spotify.togglePlay(),
-    nextTrack: () => void spotify.skipNext(),
-    prevTrack: () => void spotify.skipPrev(),
-    volume: spotify.volume / 100,
-    setVolume: (v: number) => void spotify.changeVolume(Math.round(v * 100))
+  const setPointer = (isHover: boolean) => {
+    document.body.style.cursor = isHover ? 'pointer' : 'auto'
   }
 
-  // The GLB's node chain composes to (x, y, z) -> (x, z, -y): the device lies flat with the screen
-  // facing world +Y (this is why a +Z-facing overlay looked perpendicular). A +90deg X rotation of
-  // the model stands it upright facing the camera. The display is a child of the mesh, and the
-  // click-wheel hitboxes share the same upright model frame.
   return (
     <group position={[0, 0, 0]}>
+      {/* 3D GLTF Model stood upright facing +Z */}
       <group rotation={[Math.PI / 2, 0, 0]}>
         <primitive object={gltf.scene} scale={1} />
       </group>
 
-      {/* Interactive Physical Click-Wheel Hitboxes with tactile feedback */}
-      <group position={[0.002, -0.855, -0.01]}>
-        {/* Center Select Button */}
+      {/* Tactile Click-Wheel Interactive Hitboxes & Glow Highlights */}
+      <group position={[0, -0.855, 0.015]}>
+        {/* Center Select Button: circle becomes darker / blacker on press with physical depression */}
         <mesh
-          rotation={[Math.PI / 2, 0, 0]}
-          position={[0, 0, activeBtn === 'center' ? -0.03 : 0]}
+          position={[0, 0, activeBtn === 'center' ? -0.015 : 0]}
           onClick={(e) => {
             e.stopPropagation()
-            triggerButton('center', () => audio.togglePlay())
+            triggerButton('center', () => spotify.togglePlay())
           }}
-          onPointerDown={() => (pressedDepthRef.current.center = 0.03)}
+          onPointerDown={() => (pressedDepthRef.current.center = 0.015)}
+          onPointerOver={() => setPointer(true)}
+          onPointerOut={() => setPointer(false)}
         >
-          <cylinderGeometry args={[0.26, 0.26, 0.04, 32]} />
-          <meshStandardMaterial
-            color={activeBtn === 'center' ? '#cbd5e1' : '#f8fafc'}
-            roughness={0.3}
-            metalness={0.1}
-            opacity={0.15}
+          <circleGeometry args={[0.265, 36]} />
+          <meshBasicMaterial
+            color="#000000"
+            opacity={activeBtn === 'center' ? 0.58 : 0.001}
             transparent={true}
           />
         </mesh>
 
-        {/* Play/Pause Button (Bottom Quadrant) */}
+        {/* Top Button (MENU): Cycles Screen between Now Playing and Synced Lyrics! */}
         <mesh
-          position={[0, -0.45, activeBtn === 'play' ? -0.03 : 0]}
+          position={[0, 0, activeBtn === 'menu' ? -0.012 : 0]}
           onClick={(e) => {
             e.stopPropagation()
-            triggerButton('play', () => audio.togglePlay())
+            triggerButton('menu', () => onToggleScreenMode())
           }}
-          onPointerDown={() => (pressedDepthRef.current.play = 0.03)}
+          onPointerDown={() => (pressedDepthRef.current.menu = 0.012)}
+          onPointerOver={() => setPointer(true)}
+          onPointerOut={() => setPointer(false)}
         >
-          <boxGeometry args={[0.42, 0.28, 0.04]} />
-          <meshStandardMaterial
-            color={activeBtn === 'play' ? '#38bdf8' : '#ffffff'}
-            roughness={0.3}
-            opacity={activeBtn === 'play' ? 0.4 : 0.01}
+          <ringGeometry args={[0.285, 0.68, 36, 1, Math.PI / 4, Math.PI / 2]} />
+          <meshBasicMaterial
+            color="#38bdf8"
+            opacity={activeBtn === 'menu' ? 0.46 : 0.001}
             transparent={true}
           />
         </mesh>
 
-        {/* Next Track Button (Right Quadrant) */}
+        {/* Bottom Button (PLAY / PAUSE): Cyan tactile highlight on press */}
         <mesh
-          position={[0.45, 0, activeBtn === 'next' ? -0.03 : 0]}
+          position={[0, 0, activeBtn === 'play' ? -0.012 : 0]}
           onClick={(e) => {
             e.stopPropagation()
-            triggerButton('next', () => audio.nextTrack())
+            triggerButton('play', () => spotify.togglePlay())
           }}
-          onPointerDown={() => (pressedDepthRef.current.next = 0.03)}
+          onPointerDown={() => (pressedDepthRef.current.play = 0.012)}
+          onPointerOver={() => setPointer(true)}
+          onPointerOut={() => setPointer(false)}
         >
-          <boxGeometry args={[0.28, 0.42, 0.04]} />
-          <meshStandardMaterial
-            color={activeBtn === 'next' ? '#38bdf8' : '#ffffff'}
-            roughness={0.3}
-            opacity={activeBtn === 'next' ? 0.4 : 0.01}
+          <ringGeometry args={[0.285, 0.68, 36, 1, (5 * Math.PI) / 4, Math.PI / 2]} />
+          <meshBasicMaterial
+            color="#38bdf8"
+            opacity={activeBtn === 'play' ? 0.46 : 0.001}
             transparent={true}
           />
         </mesh>
 
-        {/* Previous Track Button (Left Quadrant) */}
+        {/* Right Button (NEXT TRACK): Cyan tactile highlight on press */}
         <mesh
-          position={[-0.45, 0, activeBtn === 'prev' ? -0.03 : 0]}
+          position={[0, 0, activeBtn === 'next' ? -0.012 : 0]}
           onClick={(e) => {
             e.stopPropagation()
-            triggerButton('prev', () => audio.prevTrack())
+            triggerButton('next', () => spotify.skipNext())
           }}
-          onPointerDown={() => (pressedDepthRef.current.prev = 0.03)}
+          onPointerDown={() => (pressedDepthRef.current.next = 0.012)}
+          onPointerOver={() => setPointer(true)}
+          onPointerOut={() => setPointer(false)}
         >
-          <boxGeometry args={[0.28, 0.42, 0.04]} />
-          <meshStandardMaterial
-            color={activeBtn === 'prev' ? '#38bdf8' : '#ffffff'}
-            roughness={0.3}
-            opacity={activeBtn === 'prev' ? 0.4 : 0.01}
+          <ringGeometry args={[0.285, 0.68, 36, 1, -Math.PI / 4, Math.PI / 2]} />
+          <meshBasicMaterial
+            color="#38bdf8"
+            opacity={activeBtn === 'next' ? 0.46 : 0.001}
             transparent={true}
           />
         </mesh>
 
-        {/* Menu / Volume Up Button (Top Quadrant) */}
+        {/* Left Button (PREVIOUS TRACK): Cyan tactile highlight on press */}
         <mesh
-          position={[0, 0.45, activeBtn === 'menu' ? -0.03 : 0]}
+          position={[0, 0, activeBtn === 'prev' ? -0.012 : 0]}
           onClick={(e) => {
             e.stopPropagation()
-            triggerButton('menu', () => audio.setVolume(Math.min(1, audio.volume + 0.1)))
+            triggerButton('prev', () => spotify.skipPrev())
           }}
-          onPointerDown={() => (pressedDepthRef.current.menu = 0.03)}
+          onPointerDown={() => (pressedDepthRef.current.prev = 0.012)}
+          onPointerOver={() => setPointer(true)}
+          onPointerOut={() => setPointer(false)}
         >
-          <boxGeometry args={[0.42, 0.28, 0.04]} />
-          <meshStandardMaterial
-            color={activeBtn === 'menu' ? '#38bdf8' : '#ffffff'}
-            roughness={0.3}
-            opacity={activeBtn === 'menu' ? 0.4 : 0.01}
+          <ringGeometry args={[0.285, 0.68, 36, 1, (3 * Math.PI) / 4, Math.PI / 2]} />
+          <meshBasicMaterial
+            color="#38bdf8"
+            opacity={activeBtn === 'prev' ? 0.46 : 0.001}
             transparent={true}
           />
         </mesh>
@@ -267,11 +326,21 @@ function MP3Device({ spotify }: MP3ModelProps) {
 }
 
 export const MP3Player3D: React.FC<{ spotify: SpotifyDeviceSource }> = ({ spotify }) => {
+  const [screenMode, setScreenMode] = useState<'now-playing' | 'lyrics'>('now-playing')
+
+  const toggleScreenMode = () => {
+    setScreenMode((prev) => (prev === 'now-playing' ? 'lyrics' : 'now-playing'))
+  }
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <Canvas
         camera={{ position: [0, 0, 7.8], fov: 38 }}
-        style={{ width: '100%', height: '100%', background: 'radial-gradient(circle at 50% 40%, #1e1b4b 0%, #09090b 100%)' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          background: 'radial-gradient(circle at 50% 40%, #171b30 0%, #06080e 100%)'
+        }}
       >
         <ambientLight intensity={1.2} />
         <directionalLight position={[5, 8, 5]} intensity={2.0} castShadow />
@@ -280,7 +349,11 @@ export const MP3Player3D: React.FC<{ spotify: SpotifyDeviceSource }> = ({ spotif
         <pointLight position={[0, -2, 3]} intensity={1.0} color="#f8fafc" />
 
         <React.Suspense fallback={null}>
-          <MP3Device spotify={spotify} />
+          <MP3Device
+            spotify={spotify}
+            screenMode={screenMode}
+            onToggleScreenMode={toggleScreenMode}
+          />
         </React.Suspense>
 
         <OrbitControls
@@ -293,32 +366,92 @@ export const MP3Player3D: React.FC<{ spotify: SpotifyDeviceSource }> = ({ spotif
         />
       </Canvas>
 
-      {/* Floating Instructions HUD */}
+      {/* Sleek, Modern Glass Floating Control Bar at Bottom */}
       <div
         style={{
           position: 'absolute',
-          bottom: 24,
+          bottom: 22,
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(12px)',
-          padding: '10px 24px',
-          borderRadius: '30px',
-          border: '1px solid rgba(255, 255, 255, 0.15)',
-          color: '#ffffff',
+          background: 'rgba(10, 15, 29, 0.72)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          padding: '8px 18px',
+          borderRadius: '9999px',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          color: '#e2e8f0',
           display: 'flex',
-          gap: '20px',
+          gap: '14px',
           alignItems: 'center',
-          fontSize: '13px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          pointerEvents: 'none',
-          userSelect: 'none'
+          fontSize: '12px',
+          fontWeight: 500,
+          boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          userSelect: 'none',
+          zIndex: 50
         }}
       >
-        <span>🎯 <b>Click Center or Play Button</b> to Play/Pause</span>
-        <span>⏭ <b>Click Right</b>: Next</span>
-        <span>⏮ <b>Click Left</b>: Prev</span>
-        <span>🖱️ <b>Drag</b> to rotate 3D device</span>
+        {/* Screen Mode Quick Toggle */}
+        <button
+          onClick={toggleScreenMode}
+          style={{
+            background: screenMode === 'lyrics' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+            border: screenMode === 'lyrics' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+            color: screenMode === 'lyrics' ? '#38bdf8' : '#cbd5e1',
+            borderRadius: '12px',
+            padding: '4px 10px',
+            fontSize: '11px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.2s ease'
+          }}
+          title="Click or press MENU on iPod click-wheel"
+        >
+          <span style={{ fontSize: '10px', opacity: 0.8 }}>MENU</span>
+          <span>{screenMode === 'lyrics' ? '🎵 Lyrics View' : '🖼️ Album Art'}</span>
+        </button>
+
+        <div style={{ width: '1px', height: '14px', background: 'rgba(255, 255, 255, 0.15)' }} />
+
+        {/* Tactile Hints */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#94a3b8' }}>
+          <span>
+            <b style={{ color: '#f8fafc', fontWeight: 600 }}>Center</b> Play/Pause
+          </span>
+          <span>•</span>
+          <span>
+            <b style={{ color: '#f8fafc', fontWeight: 600 }}>⏮ / ⏭</b> Tracks
+          </span>
+          <span>•</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ fontSize: '13px' }}>🖱️</span> Drag to 3D Orbit
+          </span>
+        </div>
+
+        {/* Live Spotify Indicator */}
+        <div style={{ width: '1px', height: '14px', background: 'rgba(255, 255, 255, 0.15)' }} />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '11px',
+            color: spotify.isLoggedIn ? '#34d399' : '#94a3b8'
+          }}
+        >
+          <span
+            style={{
+              width: '7px',
+              height: '7px',
+              borderRadius: '50%',
+              background: spotify.isLoggedIn ? '#34d399' : '#64748b',
+              boxShadow: spotify.isLoggedIn ? '0 0 8px #34d399' : 'none'
+            }}
+          />
+          <span>{spotify.isLoggedIn ? 'Live' : 'Offline'}</span>
+        </div>
       </div>
     </div>
   )

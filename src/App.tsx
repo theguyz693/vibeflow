@@ -116,37 +116,40 @@ const App: React.FC = () => {
 
   // Main experience
   return (
-    <SceneManager colors={colors} albumArtUrl={albumArtUrl}>
-      <OverlayUI
-        track={currentTrack}
-        volume={volume}
-        onTogglePlay={togglePlay}
-        onSkipNext={skipNext}
-        onSkipPrev={skipPrev}
-        onSeek={seek}
-        onVolumeChange={changeVolume}
-      />
-      {lyricMode !== 'off' && (
-        <LyricsDisplay track={currentTrack} mode={lyricMode as 'list' | 'single' | 'bounce'} />
-      )}
-      {/* Corner menus — top right */}
-      <div className="corner-menus" id="corner-menus">
-        <button
-          className="corner-logout-btn"
-          onClick={logout}
-          title="Logout & Re-authenticate"
-          id="btn-logout"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </button>
-        <LyricsMenu currentMode={lyricMode} onModeChange={setLyricMode} />
-        <BackgroundPicker />
-      </div>
-    </SceneManager>
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+      {renderModeHeader()}
+      <SceneManager colors={colors} albumArtUrl={albumArtUrl}>
+        <OverlayUI
+          track={currentTrack}
+          volume={volume}
+          onTogglePlay={togglePlay}
+          onSkipNext={skipNext}
+          onSkipPrev={skipPrev}
+          onSeek={seek}
+          onVolumeChange={changeVolume}
+        />
+        {lyricMode !== 'off' && (
+          <LyricsDisplay track={currentTrack} mode={lyricMode as 'list' | 'single' | 'bounce'} />
+        )}
+        {/* Corner menus — top right */}
+        <div className="corner-menus" id="corner-menus">
+          <button
+            className="corner-logout-btn"
+            onClick={logout}
+            title="Logout & Re-authenticate"
+            id="btn-logout"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+          <LyricsMenu currentMode={lyricMode} onModeChange={setLyricMode} />
+          <BackgroundPicker />
+        </div>
+      </SceneManager>
+    </div>
   )
 }
 
