@@ -11,14 +11,16 @@ import MP3Player3D from './components/MP3Player3D'
 import LyricVoid from './components/LyricVoid'
 import LyricReel from './components/lyric-reel/LyricReel'
 import LyricScreens from './components/lyric-screens/LyricScreens'
+import LyricHype from './components/lyric-hype/LyricHype'
 
 type LyricMode = 'void' | 'list' | 'single' | 'bounce' | 'off'
-type AppMode = 'mp3-3d' | 'lyric-void' | 'lyric-reel' | 'lyric-screens' | 'spotify'
+type AppMode = 'mp3-3d' | 'lyric-void' | 'lyric-reel' | 'lyric-hype' | 'lyric-screens' | 'spotify'
 
 /** The standalone lyric visuals, grouped under one picker in the header. */
 const VISUALS: { id: AppMode; label: string; desc: string }[] = [
   { id: 'lyric-void', label: 'Editorial', desc: 'Spinning disc + clean synced lyrics' },
   { id: 'lyric-reel', label: 'Reel 3D', desc: 'Disc + glass 3D lyric stack' },
+  { id: 'lyric-hype', label: 'Disc Reel', desc: 'Giant spinning disc + 6 random lyric animations' },
   { id: 'lyric-screens', label: 'Floating Screens', desc: 'The original glowing screens' }
 ]
 
@@ -206,6 +208,19 @@ const App: React.FC = () => {
       <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
         {renderModeHeader()}
         <LyricReel
+          spotify={{ isLoggedIn, currentTrack, volume, togglePlay, skipNext, skipPrev, changeVolume }}
+          colors={colors}
+          albumArtUrl={albumArtUrl}
+        />
+      </div>
+    )
+  }
+
+  if (appMode === 'lyric-hype') {
+    return (
+      <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
+        {renderModeHeader()}
+        <LyricHype
           spotify={{ isLoggedIn, currentTrack, volume, togglePlay, skipNext, skipPrev, changeVolume }}
           colors={colors}
           albumArtUrl={albumArtUrl}

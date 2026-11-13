@@ -29,13 +29,15 @@ export const roleFor = (distance: number): Role =>
 /** Width / height of the block an active line may occupy (text-group units). */
 export const TEXT_BLOCK_W = 6.2
 
-interface Word {
+export interface Word {
   geo: THREE.BufferGeometry
   x: number
   y: number
+  /** width of the word at scale 1 */
+  w: number
 }
 
-function layoutWords(text: string, maxW: number, maxH: number, maxScale: number): { words: Word[]; scale: number } {
+export function layoutWords(text: string, maxW: number, maxH: number, maxScale: number): { words: Word[]; scale: number } {
   const geos = text
     .toUpperCase()
     .split(/\s+/)
@@ -102,7 +104,7 @@ function layoutWords(text: string, maxW: number, maxH: number, maxScale: number)
     let x = -row.w / 2
     const y = totalH / 2 - lineH * (ri + 0.5) - 0.35
     for (const item of row.items) {
-      words.push({ geo: item.geo, x, y })
+      words.push({ geo: item.geo, x, y, w: item.w })
       x += item.w + space
     }
   })

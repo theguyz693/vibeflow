@@ -41,7 +41,7 @@ function makeCanvasTex(size: number) {
   return { canvas, ctx: canvas.getContext('2d')!, tex }
 }
 
-function drawDisc(ctx: CanvasRenderingContext2D, size: number, art: HTMLImageElement | null, accent: string) {
+export function drawDisc(ctx: CanvasRenderingContext2D, size: number, art: HTMLImageElement | null, accent: string) {
   const c = size / 2
   ctx.clearRect(0, 0, size, size)
   ctx.save()
@@ -86,7 +86,7 @@ function drawDisc(ctx: CanvasRenderingContext2D, size: number, art: HTMLImageEle
   ctx.restore()
 }
 
-function makeSheen() {
+export function makeSheen() {
   const c = makeCanvasTex(512)
   const g = (c.ctx as any).createConicGradient(0.7, 256, 256) as CanvasGradient
   const stops = [0, 0.07, 0.15, 0.5, 0.57, 0.65, 1]

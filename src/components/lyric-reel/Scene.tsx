@@ -3,11 +3,12 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Lightformer } from '@react-three/drei'
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
-import { fetchLyrics, LyricLine } from '../../services/lyrics'
-import { buildLines, DEMO_LYRICS } from '../../services/lyricAnalysis'
+import { DEMO_LYRICS } from '../../services/lyricAnalysis'
 import { ColorPalette } from '../../types/spotify'
 import type { SpotifyDeviceSource } from '../MP3Player3D'
 import { Disc, discLayout, Sync } from '../shared/RecordDisc'
+import { HudInfo } from '../shared/TrackHud'
+import { useLyricSource } from '../shared/useLyricSource'
 import { roleFor, TEXT_BLOCK_W, TextLine } from './TextLine'
 import { World } from './World'
 import { safeColor } from './utils'
@@ -20,54 +21,18 @@ import { safeColor } from './utils'
  *   spin the record faster; nothing else reacts.
  */
 
-export interface ReelInfo {
-  title: string
-  artist: string
-  progress: number
-}
-
 interface SceneProps {
   spotify: SpotifyDeviceSource
   colors: ColorPalette
   albumArtUrl?: string
-  info: React.MutableRefObject<ReelInfo>
+  info: React.MutableRefObject<HudInfo>
 }
 
 export function ReelScene({ spotify, colors, albumArtUrl, info }: SceneProps) {
   const accent = colors.glow || colors.accent || '#ffffff'
   const viewport = useThree((s) => s.viewport)
 
-  /* lyrics -------------------------------------------------------------------------------- */
-  const item = spotify.currentTrack?.item ?? null
-  const demo = !item
-  const [raw, setRaw] = useState<LyricLine[] | null>(null)
-  useEffect(() => {
-    let alive = true
-    setRaw(null)
-    if (!item) return
-    fetchLyrics(item.artists?.[0]?.name || '', item.name || '', item.album?.name || '', item.duration_ms || 0)
-      .then((r) => alive && setRaw(r))
-      .catch(() => alive && setRaw(null))
-    return () => {
-      alive = false
-    }
-  }, [item?.id])
-  const lines = useMemo(() => buildLines(demo ? DEMO_LYRICS : raw || []), [demo, raw])
-
-  /* album art ----------------------------------------------------------------------------- */
-  const [art, setArt] = useState<HTMLImageElement | null>(null)
-  const [artVersion, setArtVersion] = useState(0)
-  useEffect(() => {
-    if (!albumArtUrl) {
-      setArt(null)
-      return
-    }
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => setArtVersion((v) => v + 1)
-    img.src = albumArtUrl
-    setArt(img)
-  }, [albumArtUrl])
+  const { demo, lines, art, artVersion } = useLyricSource(spotify, albumArtUrl)
 
   /* clock --------------------------------------------------------------------------------- */
   const reduced = useMemo(() => typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches, [])
