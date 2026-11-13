@@ -179,9 +179,13 @@ export function HypeScene({ spotify, colors, albumArtUrl, info }: SceneProps) {
     <>
       <color attach="background" args={['#050508']} />
       <Environment resolution={256} frames={1} key={accent}>
-        <Lightformer form="rect" intensity={5} color="#ffffff" position={[0, 6, 4]} scale={[14, 3, 1]} />
-        <Lightformer form="rect" intensity={3} color={accent} position={[-7, 1, 2]} scale={[3, 8, 1]} />
-        <Lightformer form="rect" intensity={2.5} color="#8ab4ff" position={[7, 2, -2]} scale={[3, 8, 1]} />
+        <Lightformer form="rect" intensity={6} color="#ffffff" position={[0, 6, 4]} scale={[14, 3, 1]} />
+        <Lightformer form="rect" intensity={4} color={accent} position={[-7, 1, 2]} scale={[3, 8, 1]} />
+        <Lightformer form="rect" intensity={3} color="#8ab4ff" position={[7, 2, -2]} scale={[3, 8, 1]} />
+        {/* thin hard strips = the crisp bright edges you see on glass */}
+        <Lightformer form="rect" intensity={14} color="#ffffff" position={[-3.5, 0, 6]} scale={[0.35, 12, 1]} />
+        <Lightformer form="rect" intensity={14} color="#ffffff" position={[3.5, 0, 6]} scale={[0.35, 12, 1]} />
+        <Lightformer form="rect" intensity={10} color="#ffffff" position={[0, -4, 5]} scale={[12, 0.3, 1]} />
       </Environment>
 
       <BigDisc radius={radius} art={art} artVersion={artVersion} accent={accent} speed={discSpeed} />

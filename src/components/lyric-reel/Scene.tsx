@@ -13,6 +13,35 @@ import { roleFor, TEXT_BLOCK_W, TextLine } from './TextLine'
 import { World } from './World'
 import { safeColor } from './utils'
 
+/** Soft colour shapes behind the glass type: glass is only interesting when it has something to refract. */
+function Backdrop({ colors }: { colors: ColorPalette }) {
+  const tints = useMemo(
+    () =>
+      [colors.glow, colors.accent, colors.primary].map((c) => {
+        const hsl = { h: 0, s: 0, l: 0 }
+        safeColor(c, '#8b5cf6').getHSL(hsl)
+        return new THREE.Color().setHSL(hsl.h, Math.max(hsl.s, 0.55), 0.58)
+      }),
+    [colors.glow, colors.accent, colors.primary]
+  )
+  const blobs: [number, number, number][] = [
+    [-3.3, 1.9, 1.9],
+    [3.5, 0.9, 1.7],
+    [0.9, -2.1, 1.8]
+  ]
+  return (
+    <>
+      {blobs.map(([x, y, r], i) => (
+        <mesh key={i} position={[x, y, -2.2]}>
+          <circleGeometry args={[r, 64]} />
+          {/* opaque on purpose: glass only refracts opaque objects behind it */}
+          <meshBasicMaterial color={tints[i]} toneMapped={false} />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
 /**
  * Director for the 3D reel. One composition, one camera, one motion:
  *
@@ -114,15 +143,20 @@ export function ReelScene({ spotify, colors, albumArtUrl, info }: SceneProps) {
       <color attach="background" args={['#0a0a12']} />
       <fog attach="fog" args={['#0a0a12', 16, 44]} />
       <Environment resolution={256} frames={1} key={accent}>
-        <Lightformer form="rect" intensity={5} color="#ffffff" position={[0, 6, 4]} scale={[14, 3, 1]} />
-        <Lightformer form="rect" intensity={3} color={accent} position={[-7, 1, 2]} scale={[3, 8, 1]} />
-        <Lightformer form="rect" intensity={2.5} color="#8ab4ff" position={[7, 2, -2]} scale={[3, 8, 1]} />
+        <Lightformer form="rect" intensity={6} color="#ffffff" position={[0, 6, 4]} scale={[14, 3, 1]} />
+        <Lightformer form="rect" intensity={4} color={accent} position={[-7, 1, 2]} scale={[3, 8, 1]} />
+        <Lightformer form="rect" intensity={3} color="#8ab4ff" position={[7, 2, -2]} scale={[3, 8, 1]} />
+        {/* thin hard strips = the crisp bright edges you see on glass */}
+        <Lightformer form="rect" intensity={14} color="#ffffff" position={[-3.5, 0, 6]} scale={[0.35, 12, 1]} />
+        <Lightformer form="rect" intensity={14} color="#ffffff" position={[3.5, 0, 6]} scale={[0.35, 12, 1]} />
+        <Lightformer form="rect" intensity={10} color="#ffffff" position={[0, -4, 5]} scale={[12, 0.3, 1]} />
       </Environment>
 
       <World accent={accent} floorY={floorY} poolX={D.x} />
       <Disc sync={sync} art={art} artVersion={artVersion} accent={accent} />
 
       <group position={textPos} rotation={[0, D.wide ? -0.12 : 0, 0]} scale={textScale}>
+        <Backdrop colors={colors} />
         {window_.map((i) => (
           <TextLine key={i} text={display(i)} role={roleFor(i - idx)} chorus={lines[i].chorus} accent={accent} energy={energy} />
         ))}

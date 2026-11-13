@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { easeOutBack, easeOutBounce, easeOutCubic, easeOutElastic, easeOutExpo } from '../shared/easing'
-import { layoutWords } from '../lyric-reel/TextLine'
+import { createGlassMaterial, layoutWords, useGlassFont } from '../shared/glassType'
 
 /**
  * Big glass lyric type with six interchangeable entrances. The director picks one at random for
@@ -20,37 +20,18 @@ export interface HypeMats {
 export function useHypeMaterials(accent: string): HypeMats {
   const mats = useMemo<HypeMats>(
     () => ({
-      normal: new THREE.MeshPhysicalMaterial({
-        color: '#ffffff',
-        emissive: accent,
-        emissiveIntensity: 0.45,
-        transmission: 0.45,
-        thickness: 0.8,
-        ior: 1.45,
-        roughness: 0.08,
-        clearcoat: 1,
-        clearcoatRoughness: 0.05,
-        envMapIntensity: 2.2,
-        toneMapped: false
-      }),
-      emph: new THREE.MeshPhysicalMaterial({
-        color: '#ffffff',
-        emissive: accent,
-        emissiveIntensity: 1.4,
-        transmission: 0.15,
-        thickness: 0.6,
-        roughness: 0.1,
-        clearcoat: 1,
-        envMapIntensity: 2.6,
-        toneMapped: false
-      })
+      normal: createGlassMaterial(accent, 0.04),
+      // the last word of a line: same glass, but it glows and refracts harder
+      emph: Object.assign(createGlassMaterial(accent, 0.7), { dispersion: 10 })
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   )
   useEffect(() => {
-    mats.normal.emissive.set(accent)
-    mats.emph.emissive.set(accent)
+    for (const m of [mats.normal, mats.emph]) {
+      m.emissive.set(accent)
+      m.attenuationColor.set(accent).lerp(new THREE.Color('#ffffff'), 0.65)
+    }
   }, [accent, mats])
   useEffect(
     () => () => {
@@ -83,8 +64,11 @@ interface HypeTextProps {
 const DURATION: Record<HypeStyle, number> = { slam: 0.55, slide: 0.6, stretch: 0.85, drop: 0.8, spin: 0.7, zoom: 0.65 }
 
 export function HypeText({ line, mats, maxW, maxH, maxScale, yOffset = 0 }: HypeTextProps) {
-  const { words, scale } = useMemo(() => layoutWords(line.text, maxW, maxH, maxScale), [line.text, maxW, maxH, maxScale])
-  useEffect(() => () => words.forEach((w) => w.geo.dispose()), [words])
+  const font = useGlassFont()
+  const laid = useMemo(() => (font ? layoutWords(font, line.text, maxW, maxH, maxScale) : null), [font, line.text, maxW, maxH, maxScale])
+  const words = laid?.words ?? []
+  const scale = laid?.scale ?? 1
+  useEffect(() => () => laid?.words.forEach((w) => w.geo.dispose()), [laid])
   const refs = useRef<(THREE.Group | null)[]>([])
   const last = words.length - 1
 
