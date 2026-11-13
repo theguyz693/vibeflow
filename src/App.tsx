@@ -8,9 +8,10 @@ import LyricsMenu from './components/LyricsMenu'
 import LoginScreen from './components/LoginScreen'
 import LyricsDisplay from './components/LyricsDisplay'
 import MP3Player3D from './components/MP3Player3D'
+import LyricVoid from './components/LyricVoid'
 
 type LyricMode = 'list' | 'single' | 'bounce' | 'off'
-type AppMode = 'mp3-3d' | 'spotify'
+type AppMode = 'mp3-3d' | 'lyric-void' | 'spotify'
 
 const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>('mp3-3d')
@@ -66,6 +67,22 @@ const App: React.FC = () => {
       </button>
       <button
         style={{
+          background: appMode === 'lyric-void' ? '#facc15' : 'transparent',
+          color: appMode === 'lyric-void' ? '#0f172a' : '#94a3b8',
+          border: 'none',
+          padding: '6px 14px',
+          borderRadius: '16px',
+          fontWeight: 700,
+          fontSize: '13px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease'
+        }}
+        onClick={() => setAppMode('lyric-void')}
+      >
+        🌌 Lyric Void
+      </button>
+      <button
+        style={{
           background: appMode === 'spotify' ? '#10b981' : 'transparent',
           color: appMode === 'spotify' ? '#ffffff' : '#94a3b8',
           border: 'none',
@@ -89,6 +106,19 @@ const App: React.FC = () => {
         {renderModeHeader()}
         <MP3Player3D
           spotify={{ isLoggedIn, currentTrack, volume, togglePlay, skipNext, skipPrev, changeVolume }}
+        />
+      </div>
+    )
+  }
+
+  if (appMode === 'lyric-void') {
+    return (
+      <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
+        {renderModeHeader()}
+        <LyricVoid
+          spotify={{ isLoggedIn, currentTrack, volume, togglePlay, skipNext, skipPrev, changeVolume }}
+          colors={colors}
+          albumArtUrl={albumArtUrl}
         />
       </div>
     )
