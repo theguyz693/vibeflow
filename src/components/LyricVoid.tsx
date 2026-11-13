@@ -303,7 +303,7 @@ const CSS = `
 .lv-state { position: absolute; top: 0; bottom: 120px; left: 47%; right: 5%; display: flex; flex-direction: column; justify-content: center; }
 .lv-state h2 { margin: 0; font-size: clamp(26px, 3.3vw, 52px); font-weight: 800; letter-spacing: -0.028em; line-height: 1.12; }
 .lv-state p { margin: 0.7em 0 0; font-size: 16px; font-weight: 500; color: rgba(255,255,255,0.6); }
-.lv-chip { position: absolute; top: 24px; right: 28px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; padding: 7px 12px;
+.lv-chip { position: absolute; top: 24px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; padding: 7px 12px;
   border-radius: 999px; background: rgba(255,255,255,0.1); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: rgba(255,255,255,0.85); }
 .lv-bar { position: absolute; left: 0; right: 0; bottom: 0; padding: 0 28px 22px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
   background: linear-gradient(to top, rgba(0,0,0,0.5), transparent); transition: opacity 500ms ${EASE}; }
@@ -322,7 +322,7 @@ const CSS = `
   .lv-lyrics, .lv-state { left: 6%; right: 6%; top: 46%; bottom: 128px; }
   .lv-line, .lv-state h2 { font-size: clamp(22px, 6.4vw, 34px); }
   .lv-bar { grid-template-columns: 1fr auto; padding: 0 18px 18px; } .lv-time { display: none; } .lv-prog { left: 18px; right: 18px; }
-  .lv-chip { top: 70px; right: 16px; }
+  .lv-chip { top: 76px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lv-bg { animation: none; } .lv-track, .lv-line { transition-duration: 1ms; } .lv-dots i { animation: none; opacity: 0.8; }

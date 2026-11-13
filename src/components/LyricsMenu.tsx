@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 
-type LyricMode = 'list' | 'single' | 'bounce' | 'off'
+type LyricMode = 'void' | 'list' | 'single' | 'bounce' | 'off'
 
 interface LyricsMenuProps {
   currentMode: LyricMode
@@ -8,6 +8,7 @@ interface LyricsMenuProps {
 }
 
 const MODES: { id: LyricMode; label: string; icon: string; desc: string }[] = [
+  { id: 'void', label: 'Lyric Void', icon: '🌌', desc: 'Spinning disc + editorial lyrics' },
   { id: 'list', label: 'Scroll', icon: '📜', desc: 'Scrolling lyrics list' },
   { id: 'single', label: 'Single', icon: '💬', desc: 'One line at a time' },
   { id: 'bounce', label: 'Bounce', icon: '🎤', desc: 'Bouncy karaoke style' },

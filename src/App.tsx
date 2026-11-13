@@ -9,9 +9,10 @@ import LoginScreen from './components/LoginScreen'
 import LyricsDisplay from './components/LyricsDisplay'
 import MP3Player3D from './components/MP3Player3D'
 import LyricVoid from './components/LyricVoid'
+import LyricReel from './components/lyric-reel/LyricReel'
 
-type LyricMode = 'list' | 'single' | 'bounce' | 'off'
-type AppMode = 'mp3-3d' | 'lyric-void' | 'spotify'
+type LyricMode = 'void' | 'list' | 'single' | 'bounce' | 'off'
+type AppMode = 'mp3-3d' | 'lyric-void' | 'lyric-reel' | 'spotify'
 
 const App: React.FC = () => {
   const [appMode, setAppMode] = useState<AppMode>('mp3-3d')
@@ -22,7 +23,7 @@ const App: React.FC = () => {
     togglePlay, skipNext, skipPrev, seek, changeVolume
   } = useSpotify()
   
-  const [lyricMode, setLyricMode] = useState<LyricMode>('list')
+  const [lyricMode, setLyricMode] = useState<LyricMode>('void')
 
   const albumArtUrl =
     currentTrack?.item?.album?.images?.[0]?.url ||
@@ -83,6 +84,22 @@ const App: React.FC = () => {
       </button>
       <button
         style={{
+          background: appMode === 'lyric-reel' ? '#f472b6' : 'transparent',
+          color: appMode === 'lyric-reel' ? '#0f172a' : '#94a3b8',
+          border: 'none',
+          padding: '6px 14px',
+          borderRadius: '16px',
+          fontWeight: 700,
+          fontSize: '13px',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease'
+        }}
+        onClick={() => setAppMode('lyric-reel')}
+      >
+        🎞️ Lyric Reel 3D
+      </button>
+      <button
+        style={{
           background: appMode === 'spotify' ? '#10b981' : 'transparent',
           color: appMode === 'spotify' ? '#ffffff' : '#94a3b8',
           border: 'none',
@@ -98,6 +115,21 @@ const App: React.FC = () => {
         🎧 Spotify Companion
       </button>
     </div>
+  )
+
+  const logoutButton = (
+    <button
+      className="corner-logout-btn"
+      onClick={logout}
+      title="Logout & Re-authenticate"
+      id="btn-logout"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+        <polyline points="16 17 21 12 16 7" />
+        <line x1="21" y1="12" x2="9" y2="12" />
+      </svg>
+    </button>
   )
 
   if (appMode === 'mp3-3d') {
@@ -116,6 +148,19 @@ const App: React.FC = () => {
       <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
         {renderModeHeader()}
         <LyricVoid
+          spotify={{ isLoggedIn, currentTrack, volume, togglePlay, skipNext, skipPrev, changeVolume }}
+          colors={colors}
+          albumArtUrl={albumArtUrl}
+        />
+      </div>
+    )
+  }
+
+  if (appMode === 'lyric-reel') {
+    return (
+      <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative' }}>
+        {renderModeHeader()}
+        <LyricReel
           spotify={{ isLoggedIn, currentTrack, volume, togglePlay, skipNext, skipPrev, changeVolume }}
           colors={colors}
           albumArtUrl={albumArtUrl}
@@ -144,6 +189,24 @@ const App: React.FC = () => {
     )
   }
 
+  // Companion with the editorial Lyric Void view (disc + lyrics, no background scene)
+  if (lyricMode === 'void') {
+    return (
+      <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+        {renderModeHeader()}
+        <LyricVoid
+          spotify={{ isLoggedIn, currentTrack, volume, togglePlay, skipNext, skipPrev, changeVolume }}
+          colors={colors}
+          albumArtUrl={albumArtUrl}
+        />
+        <div className="corner-menus" id="corner-menus">
+          {logoutButton}
+          <LyricsMenu currentMode={lyricMode} onModeChange={setLyricMode} />
+        </div>
+      </div>
+    )
+  }
+
   // Main experience
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
@@ -163,18 +226,7 @@ const App: React.FC = () => {
         )}
         {/* Corner menus — top right */}
         <div className="corner-menus" id="corner-menus">
-          <button
-            className="corner-logout-btn"
-            onClick={logout}
-            title="Logout & Re-authenticate"
-            id="btn-logout"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
+          {logoutButton}
           <LyricsMenu currentMode={lyricMode} onModeChange={setLyricMode} />
           <BackgroundPicker />
         </div>
